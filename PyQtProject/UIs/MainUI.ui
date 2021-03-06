@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>719</width>
-    <height>596</height>
+    <width>836</width>
+    <height>557</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -38,7 +38,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>719</width>
+     <width>836</width>
      <height>26</height>
     </rect>
    </property>
@@ -47,9 +47,23 @@
      <string>&amp;File</string>
     </property>
     <addaction name="open_db_action"/>
-    <addaction name="save_db_action"/>
+    <addaction name="save_db_as_action"/>
    </widget>
    <addaction name="menu_File"/>
+  </widget>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="save_all_tables_action"/>
+   <addaction name="save_current_table_action"/>
+   <addaction name="delete_selected_elements_action"/>
   </widget>
   <action name="open_db_action">
    <property name="text">
@@ -59,9 +73,33 @@
     <string>Ctrl+O</string>
    </property>
   </action>
-  <action name="save_db_action">
+  <action name="save_db_as_action">
    <property name="text">
-    <string>Сохранить базу данных</string>
+    <string>Сохранить базу данных как</string>
+   </property>
+   <property name="toolTip">
+    <string>Сохранить базу данных как</string>
+   </property>
+  </action>
+  <action name="delete_selected_elements_action">
+   <property name="text">
+    <string>Удалить выбранные элементы</string>
+   </property>
+   <property name="shortcut">
+    <string>Del</string>
+   </property>
+  </action>
+  <action name="save_current_table_action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Сохранить текущую таблицу</string>
+   </property>
+  </action>
+  <action name="save_all_tables_action">
+   <property name="text">
+    <string>Сохранить все таблицы</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+S</string>
