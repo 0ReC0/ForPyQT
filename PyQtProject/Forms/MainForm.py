@@ -1,5 +1,7 @@
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QTabWidget, QGridLayout, QTableWidget, \
     QTableWidgetItem, QPushButton
+
+from PyQtProject.Forms.ImageReplaceForm import ImageReplaceForm
 from PyQtProject.UIs.MainUI_ui import Ui_MainWindow
 import sqlite3
 import magic
@@ -57,7 +59,7 @@ class MainForm(QMainWindow, Ui_MainWindow):
 
     def init_table_widget_for_db_table(self, table_widget, name):
         try:
-            # Получим результат запроса,
+            # Получим результат запроса
             cursor = self.db_connection.cursor()
             res = cursor.execute(f"SELECT * FROM {name}").fetchall()
 
@@ -65,6 +67,7 @@ class MainForm(QMainWindow, Ui_MainWindow):
             if not res:
                 self.statusBar().showMessage('Ничего не нашлось')
                 return
+            table_widget.clear()
             # Заполнили размеры таблицы
             table_widget.setRowCount(len(res))
             table_widget.setColumnCount(len(res[0]))
@@ -75,10 +78,15 @@ class MainForm(QMainWindow, Ui_MainWindow):
             for i, elem in enumerate(res):
                 for j, val in enumerate(elem):
                     str_val = str(val)
-                    if str_val.startswith("b'"):
+                    if str_val.startswith("b'") and type(val) is bytes:
                         button = QPushButton('Открыть файл')
-                        file_type = magic.from_buffer(val)
-                        # TODO: Add opening image and txt file
+                        file_type = magic.from_buffer(val).split()[0].lower()
+                        image_file_types = ['jpeg', 'jpg']
+                        if file_type in image_file_types:
+                            button.imageBytes = val
+                            id = self.get_id_of_element_at_row_and_column(i, j)
+                            prop = titles[j]
+                            button.clicked.connect(lambda: self.open_image_edit_form(id, prop, button.imageBytes, button))
                         table_widget.setCellWidget(i, j, button)
                     else:
                         table_widget.setItem(i, j, QTableWidgetItem(str_val))
@@ -91,6 +99,37 @@ class MainForm(QMainWindow, Ui_MainWindow):
             self.statusBar().showMessage(f'Ошибка с бд: {e.args[0]}')
         except Exception as e:
             self.statusBar().showMessage(f'Ошибка: {e.args[0]}')
+
+    def open_image_edit_form(self, id, prop, image_data, button):
+        try:
+            self.imageEditForm = ImageReplaceForm(id, prop, image_data)
+            self.imageEditForm.show()
+            self.imageEditForm.replaceImageButton.clicked.connect(lambda: self.save_image(button))
+        except Exception as e:
+            print(e)
+
+    def save_image(self, button):
+        try:
+            if not self.imageEditForm.new_image_name:
+                raise Exception("Не отключена кнопка сохранения картинки")
+            with open(self.imageEditForm.new_image_name, mode='rb') as new_image:
+                blob_data = new_image.read()
+                element_id = self.imageEditForm.element_id
+                element_property = self.imageEditForm.element_property
+                self.imageEditForm.close()
+
+                current_table_name = self.get_current_table_name()
+                cur = self.db_connection.cursor()
+                cur.execute(f"""UPDATE {current_table_name} 
+                        SET '{element_property}'= ? WHERE id = {element_id}""", (blob_data, )).fetchone()
+
+                self.db_connection.commit()
+                self.tables_tab_widget.setTabText(
+                    self.tables_tab_widget.currentIndex(), current_table_name)
+                button.imageBytes = blob_data
+
+        except Exception as e:
+            raise Exception(e)
 
     def get_current_table_name(self):
         current_table_name = self.tables_tab_widget \
@@ -152,7 +191,7 @@ class MainForm(QMainWindow, Ui_MainWindow):
                     self.db_connection.commit()
                     self.modified_data_in_tables[table_name].clear()
                 self.tables_tab_widget.setTabText(
-                        indx_of_table, table_name)
+                    indx_of_table, table_name)
                 indx_of_table += 1
 
     def save_current_table_changes(self):
@@ -163,28 +202,25 @@ class MainForm(QMainWindow, Ui_MainWindow):
                 que = f"UPDATE {current_table_name} SET\n"
                 que += ", ".join([f"'{props['property']}'='{props['text']}'" for props in changed_props])
                 que += f" WHERE id = '{id}'"
-                print(que)
                 cur.execute(que)
 
             self.db_connection.commit()
             self.modified_data_in_tables[current_table_name].clear()
             self.tables_tab_widget.setTabText(
-                    self.tables_tab_widget.currentIndex(), current_table_name)
+                self.tables_tab_widget.currentIndex(), current_table_name)
 
     def delete_elem(self):
         try:
-            # Получаем список элементов без повторов
             table_widget = self.tables_tab_widget.currentWidget()
             rows = list(set([i.row() for i in table_widget.selectedItems()]))
             if not rows:
                 raise Exception('Не выделены никакие строки')
             ids = [table_widget.item(i, 0).text() for i in rows]
-            # Спрашиваем у пользователя подтверждение на удаление элементов
+
             valid = QMessageBox.question(
                 self, '', "Действительно удалить элементы с id " + ",".join(ids),
                 QMessageBox.Yes, QMessageBox.No)
-            # Если пользователь ответил утвердительно, удаляем элементы.
-            # Не забываем зафиксировать изменения
+
             if valid == QMessageBox.Yes:
                 cur = self.db_connection.cursor()
                 current_table_name = self.get_current_table_name()
@@ -192,9 +228,6 @@ class MainForm(QMainWindow, Ui_MainWindow):
                 cur.execute(f"DELETE FROM {current_table_name} WHERE id IN (" + ", ".join(
                     '?' * len(ids)) + ")", ids)
                 self.db_connection.commit()
-
-                for id in ids:
-                    self.modified_data_in_tables[current_table_name].pop(int(id), None)
 
                 self.init_table_widget_for_db_table(table_widget, current_table_name)
 
