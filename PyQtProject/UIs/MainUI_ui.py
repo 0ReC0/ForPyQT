@@ -48,7 +48,7 @@ class Ui_MainWindow(object):
         self.delete_selected_elements_action = QtWidgets.QAction(MainWindow)
         self.delete_selected_elements_action.setObjectName("delete_selected_elements_action")
         self.save_current_table_action = QtWidgets.QAction(MainWindow)
-        self.save_current_table_action.setCheckable(True)
+        self.save_current_table_action.setCheckable(False)
         self.save_current_table_action.setObjectName("save_current_table_action")
         self.save_all_tables_action = QtWidgets.QAction(MainWindow)
         self.save_all_tables_action.setObjectName("save_all_tables_action")
@@ -64,7 +64,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "QtDbEditor"))
         self.notLoadDbLabel.setText(_translate("MainWindow", "Не загружена база данных"))
         self.menu_File.setTitle(_translate("MainWindow", "&File"))
         self.toolBar.setWindowTitle(_translate("MainWindow", "toolBar"))
@@ -72,7 +72,8 @@ class Ui_MainWindow(object):
         self.open_db_action.setShortcut(_translate("MainWindow", "Ctrl+O"))
         self.save_db_as_action.setText(_translate("MainWindow", "Сохранить базу данных как"))
         self.save_db_as_action.setToolTip(_translate("MainWindow", "Сохранить базу данных как"))
-        self.delete_selected_elements_action.setText(_translate("MainWindow", "Удалить выбранные элементы"))
+        self.delete_selected_elements_action.setText(_translate("MainWindow", "Удалить выбранные элементы и обновить таблицу"))
+        self.delete_selected_elements_action.setToolTip(_translate("MainWindow", "Удалить выбранные элементы и обновить таблицу"))
         self.delete_selected_elements_action.setShortcut(_translate("MainWindow", "Del"))
         self.save_current_table_action.setText(_translate("MainWindow", "Сохранить текущую таблицу"))
         self.save_all_tables_action.setText(_translate("MainWindow", "Сохранить все таблицы"))

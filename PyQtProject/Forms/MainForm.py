@@ -27,24 +27,34 @@ class MainForm(QMainWindow, Ui_MainWindow):
 
     def open_db(self):
         try:
-            self.db_name = QFileDialog.getOpenFileName(self, "Выберите базу данных sqlite", '', "*.sqlite")[0]
-            self.db_connection = sqlite3.connect(self.db_name)
+            name = QFileDialog.getOpenFileName(self, "Выберите базу данных sqlite", '', "*.sqlite")[0]
+            if name:
+                self.db_name = name
+                if self.db_connection:
+                    self.db_connection.close()
+                self.db_connection = sqlite3.connect(self.db_name)
 
-            cur = self.db_connection.cursor()
-            cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
-            tables_names = [el[0] for el in cur.fetchall()]
-            if not tables_names:
-                raise Exception("Нет таблиц в базе данных")
+                cur = self.db_connection.cursor()
+                cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
+                tables_names = [el[0] for el in cur.fetchall()]
+                if not tables_names:
+                    raise Exception("Нет таблиц в базе данных")
 
-            self.notLoadDbLabel.deleteLater()
-            self.tables_tab_widget = QTabWidget(self)
-            self.gridLayout.addWidget(self.tables_tab_widget)
+                if self.notLoadDbLabel:
+                    self.notLoadDbLabel.deleteLater()
+                    self.notLoadDbLabel = None
 
-            for name in tables_names:
-                self.modified_data_in_tables[name] = {}
-                table_widget = QTableWidget()
-                self.tables_tab_widget.addTab(table_widget, name)
-                self.init_table_widget_for_db_table(table_widget, name)
+                if not self.tables_tab_widget:
+                    self.tables_tab_widget = QTabWidget(self)
+                    self.gridLayout.addWidget(self.tables_tab_widget)
+                else:
+                    self.tables_tab_widget.clear()
+
+                for name in tables_names:
+                    self.modified_data_in_tables[name] = {}
+                    table_widget = QTableWidget()
+                    self.tables_tab_widget.addTab(table_widget, name)
+                    self.init_table_widget_for_db_table(table_widget, name)
 
         except sqlite3.Error as e:
             self.statusBar().showMessage(f'Ошибка с бд: {e.args[0]}')
@@ -52,10 +62,13 @@ class MainForm(QMainWindow, Ui_MainWindow):
             self.statusBar().showMessage(f'Ошибка: {e.args[0]}')
 
     def save_db_as(self):
-        db_name = QFileDialog.getSaveFileName(self, "Сохранить базу данных sqlite как", '', "*.sqlite")[0]
-        with open(self.db_name, mode='rb') as db_cur:
-            with open(db_name, mode='wb') as out_file:
-                out_file.write(db_cur.read())
+        try:
+            db_name = QFileDialog.getSaveFileName(self, "Сохранить базу данных sqlite как", '', "*.sqlite")[0]
+            with open(self.db_name, mode='rb') as db_cur:
+                with open(db_name, mode='wb') as out_file:
+                    out_file.write(db_cur.read())
+        except Exception as e:
+            self.statusBar().showMessage(f'Ошибка: {e.args[0]}')
 
     def init_table_widget_for_db_table(self, table_widget, name):
         try:
@@ -84,10 +97,12 @@ class MainForm(QMainWindow, Ui_MainWindow):
                         image_file_types = ['jpeg', 'jpg']
                         if file_type in image_file_types:
                             button.imageBytes = val
-                            id = self.get_id_of_element_at_row_and_column(i, j)
+                            id_el = self.get_id_of_element_at_row_and_column(i, j)
                             prop = titles[j]
-                            button.clicked.connect(lambda: self.open_image_edit_form(id, prop, button.imageBytes, button))
-                        table_widget.setCellWidget(i, j, button)
+
+                            button.clicked.connect(self.open_image_edit_form(id_el, prop,
+                                                                             button.imageBytes, button))
+                            table_widget.setCellWidget(i, j, button)
                     else:
                         table_widget.setItem(i, j, QTableWidgetItem(str_val))
 
@@ -100,13 +115,16 @@ class MainForm(QMainWindow, Ui_MainWindow):
         except Exception as e:
             self.statusBar().showMessage(f'Ошибка: {e.args[0]}')
 
-    def open_image_edit_form(self, id, prop, image_data, button):
-        try:
-            self.imageEditForm = ImageReplaceForm(id, prop, image_data)
-            self.imageEditForm.show()
-            self.imageEditForm.replaceImageButton.clicked.connect(lambda: self.save_image(button))
-        except Exception as e:
-            print(e)
+    def open_image_edit_form(self, id_el, prop, image_data, button):
+        def callback():
+            try:
+                self.imageEditForm = ImageReplaceForm(id_el, prop, image_data)
+                self.imageEditForm.show()
+                self.imageEditForm.replaceImageButton.clicked.connect(lambda: self.save_image(button))
+            except Exception as e:
+                self.statusBar().showMessage(f'Ошибка: {e.args[0]}')
+
+        return callback
 
     def save_image(self, button):
         try:
@@ -121,38 +139,44 @@ class MainForm(QMainWindow, Ui_MainWindow):
                 current_table_name = self.get_current_table_name()
                 cur = self.db_connection.cursor()
                 cur.execute(f"""UPDATE {current_table_name} 
-                        SET '{element_property}'= ? WHERE id = {element_id}""", (blob_data, )).fetchone()
+                        SET '{element_property}'= ? WHERE id = {element_id}""", (blob_data,)).fetchone()
 
                 self.db_connection.commit()
-                self.tables_tab_widget.setTabText(
-                    self.tables_tab_widget.currentIndex(), current_table_name)
                 button.imageBytes = blob_data
+                button.clicked.connect(self.open_image_edit_form(element_id, element_property,
+                                                                 button.imageBytes, button))
 
         except Exception as e:
-            raise Exception(e)
+            self.statusBar().showMessage(f'Ошибка: {e.args[0]}')
 
     def get_current_table_name(self):
-        current_table_name = self.tables_tab_widget \
-            .tabText(self.tables_tab_widget.currentIndex())
+        try:
+            current_table_name = self.tables_tab_widget \
+                .tabText(self.tables_tab_widget.currentIndex())
 
-        # clear table name of modified state
-        if current_table_name[-1] == "*":
-            current_table_name = current_table_name[:-1]
+            # clear table name of modified state
+            if current_table_name[-1] == "*":
+                current_table_name = current_table_name[:-1]
 
-        return current_table_name
+            return current_table_name
+        except Exception as e:
+            self.statusBar().showMessage(f'Ошибка: {e.args[0]}')
 
     def get_id_of_element_at_row_and_column(self, item_row, item_column):
-        table_widget = self.tables_tab_widget.currentWidget()
-        column_id = -1
-        for column_i in range(table_widget.columnCount()):
-            column_text = table_widget.horizontalHeaderItem(column_i).text()
-            if column_text == "id":
-                column_id = column_i
-                break
-        if column_id == -1:
-            raise Exception("Поля id не существует в таблице")
+        try:
+            table_widget = self.tables_tab_widget.currentWidget()
+            column_id = -1
+            for column_i in range(table_widget.columnCount()):
+                column_text = table_widget.horizontalHeaderItem(column_i).text()
+                if column_text == "id":
+                    column_id = column_i
+                    break
+            if column_id == -1:
+                raise Exception("Поля id не существует в таблице")
 
-        return int(table_widget.item(item_row, column_id).text())
+            return int(table_widget.item(item_row, column_id).text())
+        except Exception as e:
+            self.statusBar().showMessage(f'Ошибка: {e.args[0]}')
 
     def item_changed(self, item):
         try:
@@ -177,63 +201,77 @@ class MainForm(QMainWindow, Ui_MainWindow):
             self.statusBar().showMessage(f'Ошибка: {e.args[0]}')
 
     def save_all_tables_changes(self):
-        if self.modified_data_in_tables:
-            indx_of_table = 0
-            for table_name, value in self.modified_data_in_tables.items():
-                if value:
+        try:
+            if self.modified_data_in_tables and self.tables_tab_widget:
+                indx_of_table = 0
+                for table_name, value in self.modified_data_in_tables.items():
+                    if value:
+                        cur = self.db_connection.cursor()
+                        for id, changed_props in self.modified_data_in_tables[table_name].items():
+                            que = f"UPDATE {table_name} SET\n"
+                            que += ", ".join([f"{props['property']}='{props['text']}'" for props in changed_props])
+                            que += f" WHERE id = {id}"
+                            cur.execute(que)
+
+                        self.db_connection.commit()
+                        self.modified_data_in_tables[table_name].clear()
+                    self.tables_tab_widget.setTabText(
+                        indx_of_table, table_name)
+                    indx_of_table += 1
+            else:
+                raise Exception('Нет таблицы')
+        except Exception as e:
+            self.statusBar().showMessage(f'Ошибка: {e.args[0]}')
+
+    def save_current_table_changes(self):
+        try:
+            if self.modified_data_in_tables and self.tables_tab_widget:
+                current_table_name = self.get_current_table_name()
+                if current_table_name and self.modified_data_in_tables[current_table_name]:
                     cur = self.db_connection.cursor()
-                    for id, changed_props in self.modified_data_in_tables[table_name].items():
-                        que = f"UPDATE {table_name} SET\n"
-                        que += ", ".join([f"{props['property']}='{props['text']}'" for props in changed_props])
-                        que += f" WHERE id = {id}"
+                    for id, changed_props in self.modified_data_in_tables[current_table_name].items():
+                        que = f"UPDATE {current_table_name} SET\n"
+                        que += ", ".join([f"'{props['property']}'='{props['text']}'" for props in changed_props])
+                        que += f" WHERE id = '{id}'"
                         cur.execute(que)
 
                     self.db_connection.commit()
-                    self.modified_data_in_tables[table_name].clear()
-                self.tables_tab_widget.setTabText(
-                    indx_of_table, table_name)
-                indx_of_table += 1
-
-    def save_current_table_changes(self):
-        current_table_name = self.get_current_table_name()
-        if self.modified_data_in_tables[current_table_name]:
-            cur = self.db_connection.cursor()
-            for id, changed_props in self.modified_data_in_tables[current_table_name].items():
-                que = f"UPDATE {current_table_name} SET\n"
-                que += ", ".join([f"'{props['property']}'='{props['text']}'" for props in changed_props])
-                que += f" WHERE id = '{id}'"
-                cur.execute(que)
-
-            self.db_connection.commit()
-            self.modified_data_in_tables[current_table_name].clear()
-            self.tables_tab_widget.setTabText(
-                self.tables_tab_widget.currentIndex(), current_table_name)
+                    self.modified_data_in_tables[current_table_name].clear()
+                    self.tables_tab_widget.setTabText(
+                        self.tables_tab_widget.currentIndex(), current_table_name)
+            else:
+                raise Exception('Нет таблицы')
+        except Exception as e:
+            self.statusBar().showMessage(f'Ошибка: {e.args[0]}')
 
     def delete_elem(self):
         try:
-            table_widget = self.tables_tab_widget.currentWidget()
-            rows = list(set([i.row() for i in table_widget.selectedItems()]))
-            if not rows:
-                raise Exception('Не выделены никакие строки')
-            ids = [table_widget.item(i, 0).text() for i in rows]
+            if self.tables_tab_widget:
+                table_widget = self.tables_tab_widget.currentWidget()
+                rows = list(set([i.row() for i in table_widget.selectedItems()]))
+                if not rows:
+                    raise Exception('Не выделены никакие строки')
+                ids = [table_widget.item(i, 0).text() for i in rows]
 
-            valid = QMessageBox.question(
-                self, '', "Действительно удалить элементы с id " + ",".join(ids),
-                QMessageBox.Yes, QMessageBox.No)
+                valid = QMessageBox.question(
+                    self, '', "Действительно удалить элементы с id " + ",".join(ids),
+                    QMessageBox.Yes, QMessageBox.No)
 
-            if valid == QMessageBox.Yes:
-                cur = self.db_connection.cursor()
-                current_table_name = self.get_current_table_name()
+                if valid == QMessageBox.Yes:
+                    cur = self.db_connection.cursor()
+                    current_table_name = self.get_current_table_name()
 
-                cur.execute(f"DELETE FROM {current_table_name} WHERE id IN (" + ", ".join(
-                    '?' * len(ids)) + ")", ids)
-                self.db_connection.commit()
+                    cur.execute(f"DELETE FROM {current_table_name} WHERE id IN (" + ", ".join(
+                        '?' * len(ids)) + ")", ids)
+                    self.db_connection.commit()
 
-                self.init_table_widget_for_db_table(table_widget, current_table_name)
+                    self.init_table_widget_for_db_table(table_widget, current_table_name)
 
-                self.modified_data_in_tables[current_table_name].clear()
-                self.tables_tab_widget.setTabText(
-                    self.tables_tab_widget.currentIndex(), current_table_name)
+                    self.modified_data_in_tables[current_table_name].clear()
+                    self.tables_tab_widget.setTabText(
+                        self.tables_tab_widget.currentIndex(), current_table_name)
+            else:
+                raise Exception('Нет таблицы')
         except sqlite3.Error as e:
             self.statusBar().showMessage(f'Ошибка с бд: {e.args[0]}')
         except Exception as e:
