@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_Form(object):
     def setupUi(self, Form):
         Form.setObjectName("Form")
-        Form.resize(699, 605)
+        Form.resize(699, 553)
         self.gridLayout = QtWidgets.QGridLayout(Form)
         self.gridLayout.setObjectName("gridLayout")
         self.normalSizeZoomBtn = QtWidgets.QPushButton(Form)
@@ -37,7 +37,7 @@ class Ui_Form(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 675, 476))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 675, 424))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.image = QtWidgets.QLabel(self.scrollAreaWidgetContents)
         self.image.setGeometry(QtCore.QRect(11, 11, 614, 393))
@@ -52,7 +52,7 @@ class Ui_Form(object):
 
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
-        Form.setWindowTitle(_translate("Form", "Form"))
+        Form.setWindowTitle(_translate("Form", "QtImageReplacer"))
         self.normalSizeZoomBtn.setText(_translate("Form", "Обычный размер"))
         self.openImageButton.setText(_translate("Form", "Открыть картинку на замену"))
         self.zoomInBtn.setText(_translate("Form", "Приблизить картинку"))

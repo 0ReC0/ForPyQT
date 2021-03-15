@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QTabWidget, QGridLayout, QTableWidget, \
     QTableWidgetItem, QPushButton, QWidget, QDialog, QScrollArea, QSizePolicy
 from PyQt5.QtGui import QImage, QPixmap, QPalette
-from PyQtProject.UIs.ImageReplaceUI_ui import Ui_Form
+from UIs.ImageReplaceUI_ui import Ui_Form
 
 
 class ImageReplaceForm(QDialog, Ui_Form):

@@ -2,7 +2,7 @@ import sys
 
 from PyQt5.QtWidgets import QApplication
 
-from PyQtProject.Forms.MainForm import MainForm
+from Forms.MainForm import MainForm
 
 
 def except_hook(cls, exception, traceback):

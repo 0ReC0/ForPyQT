@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QMessageBox, QTabWidget, QGridLayout, QTableWidget, \
     QTableWidgetItem, QPushButton
 
-from PyQtProject.Forms.ImageReplaceForm import ImageReplaceForm
-from PyQtProject.UIs.MainUI_ui import Ui_MainWindow
+from Forms.ImageReplaceForm import ImageReplaceForm
+from UIs.MainUI_ui import Ui_MainWindow
 import sqlite3
 import magic
 
